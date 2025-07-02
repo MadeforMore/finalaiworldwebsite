@@ -1,0 +1,579 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tower of Hanoi Visualizer</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css" rel="stylesheet">
+    <style>
+        /* Animation styles */
+        .disk {
+            transition: all 0.5s ease;
+        }
+        
+        .tower-container {
+            position: relative;
+            height: 250px;
+        }
+        
+        .tower {
+            position: relative;
+            width: 10px;
+            background-color: #666;
+            margin: 0 auto;
+            z-index: 0;
+        }
+        
+        /* Dark mode toggle */
+        .dark .tower {
+            background-color: #999;
+        }
+        
+        .dark {
+            background-color: #1a202c;
+            color: #e2e8f0;
+        }
+        
+        .dark .bg-white {
+            background-color: #2d3748;
+        }
+        
+        .dark .text-gray-800, .dark .text-gray-700 {
+            color: #e2e8f0;
+        }
+        
+        .dark .move-log {
+            background-color: #2d3748;
+            color: #e2e8f0;
+        }
+        
+        .tower-base {
+            position: absolute;
+            bottom: 0;
+            height: 10px;
+            background-color: #666;
+            border-radius: 2px;
+            z-index: 0;
+        }
+        
+        .dark .tower-base {
+            background-color: #999;
+        }
+        
+        .move-log {
+            max-height: 200px;
+            overflow-y: auto;
+        }
+    </style>
+</head>
+<body class="bg-gray-100 p-4 min-h-screen">
+    <div class="max-w-6xl mx-auto">
+        <header class="flex justify-between items-center mb-8">
+            <h1 class="text-3xl font-bold text-center">Tower of Hanoi Visualizer</h1>
+            <button id="darkModeToggle" class="p-2 rounded-full bg-gray-200 dark:bg-gray-600 hover:bg-gray-300 dark:hover:bg-gray-500">
+                <i class="bi bi-moon-fill dark:hidden"></i>
+                <i class="bi bi-sun-fill hidden dark:block"></i>
+            </button>
+        </header>
+
+        <!-- Input Section -->
+        <div class="grid md:grid-cols-2 gap-4 mb-8">
+            <div class="bg-white p-6 rounded-lg shadow">
+                <h2 class="text-xl font-semibold mb-4 text-gray-800">Configuration</h2>
+                
+                <div class="mb-4">
+                    <label for="towerCount" class="block mb-2 text-gray-700">Number of Towers (3-6):</label>
+                    <input type="number" id="towerCount" min="3" max="6" value="3" class="w-full p-2 border rounded">
+                </div>
+                
+                <div class="mb-6">
+                    <label for="diskCount" class="block mb-2 text-gray-700">Number of Disks (3-6):</label>
+                    <input type="number" id="diskCount" min="3" max="6" value="3" class="w-full p-2 border rounded">
+                </div>
+                
+                <div class="flex flex-wrap gap-3">
+                    <button id="startBtn" class="bg-green-500 text-white px-4 py-2 rounded hover:bg-green-600 transition">
+                        <i class="bi bi-play-fill"></i> Start Visualization
+                    </button>
+                    <button id="resetBtn" class="bg-red-500 text-white px-4 py-2 rounded hover:bg-red-600 transition">
+                        <i class="bi bi-arrow-counterclockwise"></i> Reset
+                    </button>
+                    <button id="pauseBtn" class="bg-yellow-500 text-white px-4 py-2 rounded hover:bg-yellow-600 transition" disabled>
+                        <i class="bi bi-pause-fill"></i> Pause
+                    </button>
+                </div>
+                
+                <div class="mt-6">
+                    <label for="speedRange" class="block mb-2 text-gray-700">Animation Speed:</label>
+                    <div class="flex items-center gap-2">
+                        <i class="bi bi-hourglass-bottom"></i>
+                        <input type="range" id="speedRange" min="1" max="5" value="3" class="flex-grow">
+                        <i class="bi bi-hourglass-top"></i>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="bg-white p-6 rounded-lg shadow">
+                <h2 class="text-xl font-semibold mb-4 text-gray-800">Statistics</h2>
+                
+                <div class="grid grid-cols-2 gap-4">
+                    <div class="p-3 bg-blue-100 rounded-lg">
+                        <p class="text-blue-800 font-medium text-sm">Total Moves</p>
+                        <p id="totalMoves" class="text-2xl font-bold text-blue-900">-</p>
+                    </div>
+                    <div class="p-3 bg-purple-100 rounded-lg">
+                        <p class="text-purple-800 font-medium text-sm">Current Move</p>
+                        <p id="currentMove" class="text-2xl font-bold text-purple-900">0</p>
+                    </div>
+                    <div class="p-3 bg-green-100 rounded-lg">
+                        <p class="text-green-800 font-medium text-sm">Progress</p>
+                        <p id="progressPercent" class="text-2xl font-bold text-green-900">0%</p>
+                    </div>
+                    <div class="p-3 bg-yellow-100 rounded-lg">
+                        <p class="text-yellow-800 font-medium text-sm">Elapsed Time</p>
+                        <p id="elapsedTime" class="text-2xl font-bold text-yellow-900">0s</p>
+                    </div>
+                </div>
+                
+                <h3 class="text-lg font-semibold mt-6 mb-2 text-gray-800">Move Log</h3>
+                <div id="moveLog" class="move-log p-3 bg-gray-50 rounded-lg text-sm text-gray-700 border">
+                    <p class="text-center text-gray-500">Moves will appear here</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Visualization Area -->
+        <div class="bg-white p-6 rounded-lg shadow mb-8">
+            <h2 class="text-xl font-semibold mb-4 text-gray-800">Visualization</h2>
+            <div id="visualization" class="tower-container flex items-end justify-around p-4 mb-4 border-2 border-gray-200 rounded bg-gray-50 min-h-[300px]">
+                <!-- Towers and disks will be rendered here -->
+                <div class="flex justify-center items-center h-full">
+                    <p class="text-gray-500">Click 'Start Visualization' to begin</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Tower of Hanoi Visualizer Logic
+        class TowerOfHanoiVisualizer {
+            constructor() {
+                this.towerCount = 3;
+                this.diskCount = 3;
+                this.towers = [];
+                this.moves = [];
+                this.currentMove = 0;
+                this.isPlaying = false;
+                this.isPaused = false;
+                this.moveInterval = null;
+                this.speed = 3;
+                this.moveDuration = 500; // ms
+                this.startTime = null;
+                this.elapsedTimeInterval = null;
+                
+                // Initialize DOM references
+                this.initializeDOMReferences();
+                
+                // Set up event listeners
+                this.setupEventListeners();
+            }
+            
+            initializeDOMReferences() {
+                this.towerCountInput = document.getElementById('towerCount');
+                this.diskCountInput = document.getElementById('diskCount');
+                this.startBtn = document.getElementById('startBtn');
+                this.resetBtn = document.getElementById('resetBtn');
+                this.pauseBtn = document.getElementById('pauseBtn');
+                this.speedRange = document.getElementById('speedRange');
+                this.visualization = document.getElementById('visualization');
+                this.totalMovesEl = document.getElementById('totalMoves');
+                this.currentMoveEl = document.getElementById('currentMove');
+                this.progressEl = document.getElementById('progressPercent');
+                this.elapsedTimeEl = document.getElementById('elapsedTime');
+                this.moveLogEl = document.getElementById('moveLog');
+                this.darkModeToggle = document.getElementById('darkModeToggle');
+            }
+            
+            setupEventListeners() {
+                this.startBtn.addEventListener('click', () => this.startVisualization());
+                this.resetBtn.addEventListener('click', () => this.resetVisualization());
+                this.pauseBtn.addEventListener('click', () => this.togglePause());
+                this.speedRange.addEventListener('input', (e) => {
+                    this.speed = parseInt(e.target.value);
+                    this.updateMoveDuration();
+                });
+                this.darkModeToggle.addEventListener('click', () => this.toggleDarkMode());
+                
+                // Check for dark mode preference
+                if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
+                    document.documentElement.classList.add('dark');
+                }
+            }
+            
+            updateMoveDuration() {
+                // Map speed (1-5) to duration (1000ms - 200ms)
+                this.moveDuration = 1100 - (this.speed * 200);
+            }
+            
+            toggleDarkMode() {
+                document.documentElement.classList.toggle('dark');
+            }
+            
+            startVisualization() {
+                // Get values from inputs
+                this.towerCount = parseInt(this.towerCountInput.value) || 3;
+                this.diskCount = parseInt(this.diskCountInput.value) || 3;
+                
+                // Validate inputs
+                this.towerCount = Math.max(3, Math.min(6, this.towerCount));
+                this.diskCount = Math.max(3, Math.min(6, this.diskCount));
+                
+                // Update inputs with validated values
+                this.towerCountInput.value = this.towerCount;
+                this.diskCountInput.value = this.diskCount;
+                
+                // Clear previous state
+                this.resetVisualization(false);
+                
+                // Initialize towers and disks
+                this.initializeTowers();
+                
+                // Generate moves
+                this.generateMoves();
+                
+                // Update UI
+                this.totalMovesEl.textContent = this.moves.length;
+                this.moveLogEl.innerHTML = '<p class="text-center text-gray-500">Ready to start</p>';
+                
+                // Enable play/pause functionality
+                this.pauseBtn.disabled = false;
+                this.startBtn.disabled = true;
+                
+                // Start playing
+                this.isPlaying = true;
+                this.isPaused = false;
+                this.pauseBtn.innerHTML = '<i class="bi bi-pause-fill"></i> Pause';
+                this.startTime = new Date();
+                this.updateElapsedTime();
+                this.elapsedTimeInterval = setInterval(() => this.updateElapsedTime(), 1000);
+                
+                this.playNextMove();
+            }
+            
+            resetVisualization(resetInputs = true) {
+                // Stop any ongoing animation
+                clearTimeout(this.moveInterval);
+                clearInterval(this.elapsedTimeInterval);
+                
+                // Reset state
+                this.towers = [];
+                this.moves = [];
+                this.currentMove = 0;
+                this.isPlaying = false;
+                this.isPaused = false;
+                
+                // Reset UI
+                this.visualization.innerHTML = `
+                    <div class="flex justify-center items-center h-full">
+                        <p class="text-gray-500">Click 'Start Visualization' to begin</p>
+                    </div>
+                `;
+                this.moveLogEl.innerHTML = '<p class="text-center text-gray-500">Moves will appear here</p>';
+                this.totalMovesEl.textContent = '-';
+                this.currentMoveEl.textContent = '0';
+                this.progressEl.textContent = '0%';
+                this.elapsedTimeEl.textContent = '0s';
+                
+                // Reset buttons
+                this.startBtn.disabled = false;
+                this.pauseBtn.disabled = true;
+                
+                // Reset inputs if requested
+                if (resetInputs) {
+                    this.towerCountInput.value = 3;
+                    this.diskCountInput.value = 3;
+                    this.towerCount = 3;
+                    this.diskCount = 3;
+                }
+            }
+            
+            togglePause() {
+                if (this.isPlaying) {
+                    if (this.isPaused) {
+                        // Resume
+                        this.isPaused = false;
+                        this.pauseBtn.innerHTML = '<i class="bi bi-pause-fill"></i> Pause';
+                        this.playNextMove();
+                    } else {
+                        // Pause
+                        this.isPaused = true;
+                        this.pauseBtn.innerHTML = '<i class="bi bi-play-fill"></i> Resume';
+                        clearTimeout(this.moveInterval);
+                    }
+                }
+            }
+            
+            initializeTowers() {
+                this.visualization.innerHTML = '';
+                
+                // Create tower containers
+                const towerWidth = 100 / this.towerCount;
+                for (let i = 0; i < this.towerCount; i++) {
+                    const towerLabel = String.fromCharCode(65 + i); // 'A', 'B', 'C', ...
+                    const towerContainer = document.createElement('div');
+                    towerContainer.className = `tower-rod flex flex-col items-center w-${towerWidth}% p-2`;
+                    
+                    // Add tower label
+                    const label = document.createElement('div');
+                    label.className = 'tower-label text-center font-semibold mt-3';
+                    label.textContent = towerLabel;
+                    
+                    // Create tower rod
+                    const towerRod = document.createElement('div');
+                    towerRod.className = 'tower h-[200px] mb-1';
+                    
+                    // Create tower base
+                    const towerBase = document.createElement('div');
+                    towerBase.className = 'tower-base w-full';
+                    towerBase.style.width = '80%';
+                    towerBase.style.left = '10%';
+                    
+                    // Create disk stack
+                    const diskStack = document.createElement('div');
+                    diskStack.id = `tower-${i}`;
+                    diskStack.className = 'disk-stack flex flex-col-reverse items-center';
+                    diskStack.style.marginTop = 'auto';
+                    
+                    // Append elements
+                    towerContainer.appendChild(diskStack);
+                    towerContainer.appendChild(towerRod);
+                    towerContainer.appendChild(towerBase);
+                    towerContainer.appendChild(label);
+                    this.visualization.appendChild(towerContainer);
+                }
+                
+                // Initialize tower data structure
+                this.towers = Array(this.towerCount).fill().map(() => []);
+                
+                // Add disks to the first tower
+                const firstTower = document.getElementById('tower-0');
+                for (let i = this.diskCount; i >= 1; i--) {
+                    this.towers[0].push(i);
+                    this.addDiskToDOM(i, firstTower);
+                }
+            }
+            
+            addDiskToDOM(diskNum, towerElement) {
+                const disk = document.createElement('div');
+                disk.id = `disk-${diskNum}`;
+                disk.className = `disk flex items-center justify-center rounded-md h-10 mb-1`;
+                
+                // Calculate width based on disk number
+                const baseWidth = 90;  // Base width percentage
+                const widthDecrement = 10;  // Decrement per disk
+                const width = baseWidth - ((diskNum - 1) * widthDecrement);
+                disk.style.width = `${width}%`;
+                
+                // Set color based on disk number (using HSL for easy hue calculation)
+                const hue = (diskNum * 30) % 360;
+                disk.style.backgroundColor = `hsl(${hue}, 70%, 60%)`;
+                
+                // Add text label
+                disk.innerHTML = `<span class="text-white font-bold">${diskNum}</span>`;
+                
+                // Add to tower
+                towerElement.appendChild(disk);
+                return disk;
+            }
+            
+            generateMoves() {
+                this.moves = [];
+                
+                if (this.towerCount === 3) {
+                    // Standard Tower of Hanoi for 3 towers
+                    this.generateMovesRecursive(this.diskCount, 0, 2, 1);
+                } else {
+                    // Frame-Stewart algorithm for more than 3 towers
+                    this.generateFrameStewartMoves(this.diskCount, 0, this.towerCount - 1);
+                }
+            }
+            
+            generateMovesRecursive(n, source, target, auxiliary) {
+                if (n === 1) {
+                    this.moves.push({ disk: 1, from: source, to: target });
+                } else {
+                    this.generateMovesRecursive(n - 1, source, auxiliary, target);
+                    this.moves.push({ disk: n, from: source, to: target });
+                    this.generateMovesRecursive(n - 1, auxiliary, target, source);
+                }
+            }
+            
+            generateFrameStewartMoves(n, source, target) {
+                // For 4 or more pegs, we use a simplified Frame-Stewart algorithm
+                // This is not optimal but works visually
+                if (n === 0) return;
+                
+                if (n === 1) {
+                    this.moves.push({ disk: 1, from: source, to: target });
+                    return;
+                }
+                
+                // For simplicity, we'll use a recursive approach similar to 3 towers
+                // but use the extra towers as intermediates
+                const auxiliaries = [];
+                for (let i = 0; i < this.towerCount; i++) {
+                    if (i !== source && i !== target) {
+                        auxiliaries.push(i);
+                    }
+                }
+                
+                // Move n-1 disks to first auxiliary tower
+                this.generateFrameStewartSubMoves(n - 1, source, auxiliaries[0], auxiliaries.slice(1).concat([target]));
+                
+                // Move the largest disk to the target
+                this.moves.push({ disk: n, from: source, to: target });
+                
+                // Move n-1 disks from auxiliary to target
+                this.generateFrameStewartSubMoves(n - 1, auxiliaries[0], target, auxiliaries.slice(1).concat([source]));
+            }
+            
+            generateFrameStewartSubMoves(n, source, target, auxiliaries) {
+                if (n === 1) {
+                    this.moves.push({ disk: 1, from: source, to: target });
+                    return;
+                }
+                
+                if (auxiliaries.length === 0) {
+                    // Should not happen
+                    return;
+                }
+                
+                if (auxiliaries.length === 1) {
+                    // Only one auxiliary - standard 3 tower algorithm
+                    this.generateMovesRecursive(n, source, target, auxiliaries[0]);
+                } else {
+                    // Split the problem
+                    const k = Math.floor(n / 2); // Simple split
+                    
+                    // Move k disks to first auxiliary
+                    this.generateFrameStewartSubMoves(k, source, auxiliaries[0], [target].concat(auxiliaries.slice(1)));
+                    
+                    // Move n-k disks to target
+                    this.generateFrameStewartSubMoves(n - k, source, target, auxiliaries);
+                    
+                    // Move k disks from auxiliary to target
+                    this.generateFrameStewartSubMoves(k, auxiliaries[0], target, [source].concat(auxiliaries.slice(1)));
+                }
+            }
+            
+            playNextMove() {
+                if (!this.isPlaying || this.isPaused) return;
+                
+                if (this.currentMove >= this.moves.length) {
+                    // All moves completed
+                    this.isPlaying = false;
+                    this.pauseBtn.disabled = true;
+                    clearInterval(this.elapsedTimeInterval);
+                    this.logMove("All moves completed!");
+                    return;
+                }
+                
+                const move = this.moves[this.currentMove];
+                const diskNum = this.towers[move.from].pop(); // Remove disk from source tower
+                
+                // Log the move
+                const fromTower = String.fromCharCode(65 + move.from);
+                const toTower = String.fromCharCode(65 + move.to);
+                this.logMove(`Move Disk ${diskNum} from Tower ${fromTower} to Tower ${toTower}`);
+                
+                // Update current move counter
+                this.currentMoveEl.textContent = this.currentMove + 1;
+                
+                // Update progress
+                const progress = Math.round(((this.currentMove + 1) / this.moves.length) * 100);
+                this.progressEl.textContent = `${progress}%`;
+                
+                // Perform the animation
+                this.animateMove(diskNum, move.from, move.to);
+                
+                // Increment current move
+                this.currentMove++;
+            }
+            
+            logMove(message) {
+                const logEntry = document.createElement('div');
+                logEntry.className = 'mb-1 pb-1 border-b border-gray-100 last:border-0';
+                logEntry.textContent = message;
+                this.moveLogEl.appendChild(logEntry);
+                this.moveLogEl.scrollTop = this.moveLogEl.scrollHeight;
+            }
+            
+            updateElapsedTime() {
+                if (!this.startTime) return;
+                
+                const elapsedSeconds = Math.floor((new Date() - this.startTime) / 1000);
+                this.elapsedTimeEl.textContent = `${elapsedSeconds}s`;
+            }
+            
+            animateMove(diskNum, fromTower, toTower) {
+                const disk = document.getElementById(`disk-${diskNum}`);
+                const sourceStack = document.getElementById(`tower-${fromTower}`);
+                const targetStack = document.getElementById(`tower-${toTower}`);
+                
+                if (!disk || !sourceStack || !targetStack) return;
+                
+                // Get positions for animation
+                const diskRect = disk.getBoundingClientRect();
+                const sourceRect = sourceStack.getBoundingClientRect();
+                const targetRect = targetStack.getBoundingClientRect();
+                
+                // Remove disk from source tower
+                sourceStack.removeChild(disk);
+                
+                // Add disk to document body for animation
+                document.body.appendChild(disk);
+                
+                // Position disk absolutely at its original position
+                disk.style.position = 'fixed';
+                disk.style.top = `${diskRect.top}px`;
+                disk.style.left = `${diskRect.left}px`;
+                disk.style.width = `${diskRect.width}px`;
+                disk.style.zIndex = '1000';
+                
+                // Animation sequence:
+                // 1. Move up
+                setTimeout(() => {
+                    disk.style.top = `${Math.min(sourceRect.top, targetRect.top) - 50}px`;
+                }, 50);
+                
+                // 2. Move horizontally
+                setTimeout(() => {
+                    disk.style.left = `${targetRect.left + (targetRect.width / 2) - (diskRect.width / 2)}px`;
+                }, this.moveDuration / 3);
+                
+                // 3. Move down to target tower
+                setTimeout(() => {
+                    const topPosition = targetRect.top + targetRect.height - (this.towers[toTower].length + 1) * disk.offsetHeight;
+                    disk.style.top = `${topPosition}px`;
+                }, (this.moveDuration / 3) * 2);
+                
+                // 4. Complete animation by adding disk to target tower
+                setTimeout(() => {
+                    document.body.removeChild(disk);
+                    this.towers[toTower].push(diskNum);
+                    this.addDiskToDOM(diskNum, targetStack);
+                    
+                    // Play next move
+                    this.moveInterval = setTimeout(() => this.playNextMove(), this.moveDuration / 3);
+                }, this.moveDuration);
+            }
+        }
+
+        // Initialize the visualizer
+        document.addEventListener('DOMContentLoaded', () => {
+            const visualizer = new TowerOfHanoiVisualizer();
+        });
+    </script>
+</body>
+</html>

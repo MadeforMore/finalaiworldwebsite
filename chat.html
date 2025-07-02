@@ -1,0 +1,230 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Word - AI Problem Solver</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&display=swap" rel="stylesheet">
+    <style>
+        * {
+            font-family: 'Roboto', sans-serif;
+        }
+        .loader {
+            border: 3px solid #f3f3f3;
+            border-radius: 50%;
+            border-top: 3px solid #000;
+            width: 24px;
+            height: 24px;
+            animation: spin 1s linear infinite;
+            display: none;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        .history-item:hover .delete-btn {
+            display: block;
+        }
+    </style>
+</head>
+<body class="bg-gray-100 min-h-screen">
+    <nav class="bg-black text-white p-4">
+        <div class="container mx-auto flex justify-between items-center">
+            <h1 class="text-2xl font-bold">AI Word</h1>
+            <button id="historyBtn" class="px-4 py-2 rounded hover:bg-gray-800">History</button>
+        </div>
+    </nav>
+
+    <main class="container mx-auto p-4">
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <!-- Input Section -->
+            <div class="bg-white p-6 rounded-lg shadow-md">
+                <h2 class="text-xl font-bold mb-4">Solve AI Problems</h2>
+                <textarea id="promptInput" class="w-full h-32 p-3 border rounded resize-none mb-4" placeholder="Enter your AI-related question or problem here..."></textarea>
+                <button id="submitBtn" class="bg-black text-white px-6 py-2 rounded hover:bg-gray-800 flex items-center gap-2">
+                    <span>Get Solution</span>
+                    <div class="loader" id="submitLoader"></div>
+                </button>
+            </div>
+
+            <!-- Output Section -->
+            <div class="bg-white p-6 rounded-lg shadow-md">
+                <h2 class="text-xl font-bold mb-4">Solution</h2>
+                <div id="outputArea" class="min-h-[200px] p-3 border rounded bg-gray-50"></div>
+            </div>
+        </div>
+
+        <!-- History Modal -->
+        <div id="historyModal" class="fixed inset-0 bg-black bg-opacity-50 hidden">
+            <div class="bg-white max-w-2xl mx-auto mt-20 p-6 rounded-lg">
+                <div class="flex justify-between items-center mb-4">
+                    <h3 class="text-xl font-bold">Query History</h3>
+                    <button id="closeHistoryBtn" class="text-2xl">&times;</button>
+                </div>
+                <div id="historyList" class="space-y-3 max-h-[400px] overflow-y-auto"></div>
+            </div>
+        </div>
+    </main>
+
+    <script>
+        const appSlug = 'ai-word-123456';
+        let userId = localStorage.getItem('userId') || 'user-' + Date.now();
+        localStorage.setItem('userId', userId);
+
+        const submitBtn = document.getElementById('submitBtn');
+        const submitLoader = document.getElementById('submitLoader');
+        const promptInput = document.getElementById('promptInput');
+        const outputArea = document.getElementById('outputArea');
+        const historyBtn = document.getElementById('historyBtn');
+        const historyModal = document.getElementById('historyModal');
+        const closeHistoryBtn = document.getElementById('closeHistoryBtn');
+        const historyList = document.getElementById('historyList');
+
+        async function getAIResponse(prompt) {
+            try {
+                const response = await fetch('https://r0c8kgwocscg8gsokogwwsw4.zetaverse.one/ai', {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': 'Bearer k9zXNm63jmfA0ymr4TEeN3I4GVg1',
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        messages: [{
+                            role: 'user',
+                            content: [{ type: 'text', text: prompt }]
+                        }]
+                    })
+                });
+                const data = await response.json();
+                return data.message;
+            } catch (error) {
+                console.error('Error:', error);
+                return 'An error occurred while processing your request.';
+            }
+        }
+
+        async function saveQuery(prompt, response) {
+            try {
+                await fetch('https://r0c8kgwocscg8gsokogwwsw4.zetaverse.one/mongodb', {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': 'Bearer k9zXNm63jmfA0ymr4TEeN3I4GVg1',
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        appSlug,
+                        action: 'create',
+                        collection: 'queries',
+                        data: {
+                            userId,
+                            prompt,
+                            response,
+                            timestamp: new Date().toISOString()
+                        }
+                    })
+                });
+            } catch (error) {
+                console.error('Error saving query:', error);
+            }
+        }
+
+        async function loadHistory() {
+            try {
+                const response = await fetch('https://r0c8kgwocscg8gsokogwwsw4.zetaverse.one/mongodb', {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': 'Bearer k9zXNm63jmfA0ymr4TEeN3I4GVg1',
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        appSlug,
+                        action: 'read',
+                        collection: 'queries',
+                        conditions: { userId }
+                    })
+                });
+                const data = await response.json();
+                return data.result;
+            } catch (error) {
+                console.error('Error loading history:', error);
+                return [];
+            }
+        }
+
+        async function deleteHistoryItem(id) {
+            try {
+                await fetch('https://r0c8kgwocscg8gsokogwwsw4.zetaverse.one/mongodb', {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': 'Bearer k9zXNm63jmfA0ymr4TEeN3I4GVg1',
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        appSlug,
+                        action: 'delete',
+                        collection: 'queries',
+                        id
+                    })
+                });
+                showHistory();
+            } catch (error) {
+                console.error('Error deleting item:', error);
+            }
+        }
+
+        submitBtn.addEventListener('click', async () => {
+            const prompt = promptInput.value.trim();
+            if (!prompt) return;
+
+            submitBtn.disabled = true;
+            submitLoader.style.display = 'block';
+            outputArea.innerHTML = 'Processing...';
+
+            const response = await getAIResponse(prompt);
+            outputArea.innerHTML = response;
+            await saveQuery(prompt, response);
+
+            submitBtn.disabled = false;
+            submitLoader.style.display = 'none';
+        });
+
+        async function showHistory() {
+            const history = await loadHistory();
+            historyList.innerHTML = '';
+            
+            history.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp))
+                  .forEach(item => {
+                const div = document.createElement('div');
+                div.className = 'history-item bg-gray-50 p-4 rounded relative';
+                div.innerHTML = `
+                    <p class="font-bold">${item.prompt}</p>
+                    <p class="text-gray-600 mt-2">${item.response}</p>
+                    <p class="text-sm text-gray-400 mt-2">${new Date(item.timestamp).toLocaleString()}</p>
+                    <button class="delete-btn hidden absolute top-2 right-2 text-red-500 hover:text-red-700" 
+                            onclick="deleteHistoryItem('${item._id}')">
+                        <i class="bi bi-trash"></i>
+                    </button>
+                `;
+                historyList.appendChild(div);
+            });
+        }
+
+        historyBtn.addEventListener('click', () => {
+            historyModal.classList.remove('hidden');
+            showHistory();
+        });
+
+        closeHistoryBtn.addEventListener('click', () => {
+            historyModal.classList.add('hidden');
+        });
+
+        historyModal.addEventListener('click', (e) => {
+            if (e.target === historyModal) {
+                historyModal.classList.add('hidden');
+            }
+        });
+    </script>
+</body>
+</html>

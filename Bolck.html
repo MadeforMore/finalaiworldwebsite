@@ -1,0 +1,536 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Block World Visualizer</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css" rel="stylesheet">
+    <style>
+        .block {
+            transition: all 0.5s ease;
+        }
+        .table {
+            height: 10px;
+            background: #555;
+        }
+        .explanation {
+            min-height: 100px;
+        }
+        .visualization-container {
+            position: relative;
+            height: 300px;
+        }
+    </style>
+</head>
+<body class="bg-gray-100 p-4">
+    <div class="max-w-6xl mx-auto">
+        <h1 class="text-3xl font-bold text-center mb-8">AI Block World Visualizer</h1>
+
+        <div class="grid md:grid-cols-2 gap-4 mb-8">
+            <!-- Initial State Input -->
+            <div class="bg-white p-4 rounded-lg shadow">
+                <h2 class="text-xl font-semibold mb-4">Initial State</h2>
+                <textarea id="initialState" class="w-full h-32 p-2 border rounded" placeholder="Enter initial state (e.g., A,B,C on table&#10;B on A&#10;C clear)"></textarea>
+            </div>
+
+            <!-- Goal State Input -->
+            <div class="bg-white p-4 rounded-lg shadow">
+                <h2 class="text-xl font-semibold mb-4">Goal State</h2>
+                <textarea id="goalState" class="w-full h-32 p-2 border rounded" placeholder="Enter goal state (e.g., B,C on table&#10;A on B&#10;C clear)"></textarea>
+            </div>
+        </div>
+
+        <div class="text-center mb-8">
+            <button id="solve" class="bg-blue-500 text-white px-6 py-2 rounded hover:bg-blue-600">Solve</button>
+        </div>
+
+        <!-- Visualization Area -->
+        <div class="bg-white p-4 rounded-lg shadow mb-8">
+            <div id="visualization" class="visualization-container border-2 border-gray-200 rounded relative mb-4">
+                <!-- Blocks will be rendered here -->
+                <div class="table absolute bottom-0 w-full"></div>
+            </div>
+
+            <!-- Controls -->
+            <div class="flex flex-wrap justify-center gap-4 mb-4">
+                <button id="prev" class="bg-gray-500 text-white px-4 py-2 rounded hover:bg-gray-600">
+                    <i class="bi bi-skip-backward-fill"></i> Previous
+                </button>
+                <button id="playPause" class="bg-green-500 text-white px-4 py-2 rounded hover:bg-green-600">
+                    <i class="bi bi-play-fill"></i> Play
+                </button>
+                <button id="next" class="bg-gray-500 text-white px-4 py-2 rounded hover:bg-gray-600">
+                    Next <i class="bi bi-skip-forward-fill"></i>
+                </button>
+                <button id="reset" class="bg-red-500 text-white px-4 py-2 rounded hover:bg-red-600">
+                    <i class="bi bi-arrow-counterclockwise"></i> Reset
+                </button>
+                <div class="flex items-center">
+                    <label class="mr-2">Speed:</label>
+                    <input type="range" id="speed" min="1" max="5" value="3" class="w-32">
+                </div>
+            </div>
+
+            <!-- Step Explanation -->
+            <div id="explanation" class="explanation p-4 bg-gray-100 rounded">
+                <p class="text-center text-gray-500">Click 'Solve' to start the visualization</p>
+            </div>
+        </div>
+
+        <!-- Steps Summary -->
+        <div id="summary" class="bg-white p-4 rounded-lg shadow">
+            <h2 class="text-xl font-semibold mb-4">Solution Steps</h2>
+            <div id="stepsList" class="space-y-2">
+                <!-- Steps will be listed here -->
+            </div>
+        </div>
+    </div>
+
+    <script>
+        class BlockWorld {
+            constructor() {
+                this.currentStep = 0;
+                this.isPlaying = false;
+                this.steps = [];
+                this.playInterval = null;
+                this.speed = 3;
+                this.tableHeight = 10; // Height of the table
+                this.blockWidth = 60;  // Width of each block
+                this.blockHeight = 60; // Height of each block
+                this.spacing = 30;     // Space between blocks on table
+                
+                this.setupEventListeners();
+            }
+
+            setupEventListeners() {
+                document.getElementById('solve').addEventListener('click', () => this.solveBlockWorld());
+                document.getElementById('prev').addEventListener('click', () => this.previousStep());
+                document.getElementById('next').addEventListener('click', () => this.nextStep());
+                document.getElementById('playPause').addEventListener('click', () => this.togglePlay());
+                document.getElementById('reset').addEventListener('click', () => this.reset());
+                document.getElementById('speed').addEventListener('input', (e) => this.speed = e.target.value);
+                
+                // Make the visualization responsive
+                window.addEventListener('resize', () => {
+                    if (this.steps.length > 0) {
+                        this.renderStep();
+                    }
+                });
+            }
+
+            parseBlockState(text) {
+                const blocks = {};
+                const lines = text.split('\n').map(line => line.trim()).filter(line => line);
+                
+                // Initialize blocks
+                for (const line of lines) {
+                    if (line.includes('on table')) {
+                        const tableBlocks = line.split('on table')[0].trim().split(',').map(b => b.trim());
+                        for (const block of tableBlocks) {
+                            blocks[block] = { onTable: true, clear: true, supports: [] };
+                        }
+                    }
+                }
+                
+                // Process relationships
+                for (const line of lines) {
+                    if (line.includes('on ') && !line.includes('table')) {
+                        const parts = line.split('on');
+                        const upperBlock = parts[0].trim();
+                        const lowerBlock = parts[1].trim();
+                        
+                        if (!blocks[upperBlock]) blocks[upperBlock] = { onTable: false, clear: true, supports: [] };
+                        if (!blocks[lowerBlock]) blocks[lowerBlock] = { onTable: false, clear: false, supports: [] };
+                        
+                        blocks[upperBlock].onTable = false;
+                        blocks[lowerBlock].clear = false;
+                        blocks[lowerBlock].supports.push(upperBlock);
+                    } else if (line.includes('clear')) {
+                        const clearBlocks = line.split('clear')[0].trim().split(',').map(b => b.trim());
+                        for (const block of clearBlocks) {
+                            if (!blocks[block]) blocks[block] = { onTable: false, clear: true, supports: [] };
+                            blocks[block].clear = true;
+                        }
+                    }
+                }
+                
+                return blocks;
+            }
+
+            solveBlockWorld() {
+                const initialText = document.getElementById('initialState').value;
+                const goalText = document.getElementById('goalState').value;
+
+                if (!initialText || !goalText) {
+                    alert("Please enter both initial and goal states");
+                    return;
+                }
+
+                try {
+                    const initialBlocks = this.parseBlockState(initialText);
+                    const goalBlocks = this.parseBlockState(goalText);
+                    
+                    // Generate solution steps
+                    this.steps = this.generateSolutionSteps(initialBlocks, goalBlocks);
+                    this.currentStep = 0;
+                    this.renderStep();
+                    this.updateSummary();
+                } catch (error) {
+                    alert("Error parsing block states. Please check your input format.");
+                    console.error(error);
+                }
+            }
+
+            generateSolutionSteps(initialBlocks, goalBlocks) {
+                const steps = [];
+                
+                // Deep clone to avoid modifying the original
+                let currentState = JSON.parse(JSON.stringify(initialBlocks));
+                
+                // Add initial state
+                steps.push({
+                    action: "Initial State",
+                    blocks: this.cloneBlockState(currentState)
+                });
+
+                // First disassemble: Move all blocks that are not in their final positions to the table
+                const blocksToDisassemble = this.getBlocksToDisassemble(currentState, goalBlocks);
+                
+                for (const block of blocksToDisassemble) {
+                    // Find blocks that need to be cleared first (top-down approach)
+                    const blocksAbove = this.findBlocksAbove(currentState, block);
+                    
+                    // Move each block above to the table
+                    for (const upperBlock of blocksAbove) {
+                        // Find what this block is on
+                        const supportBlock = this.findSupportingBlock(currentState, upperBlock);
+                        
+                        // Create action
+                        steps.push({
+                            action: `Move ${upperBlock} from ${supportBlock} to table`,
+                            blocks: this.moveBlockToTable(currentState, upperBlock)
+                        });
+                    }
+                }
+                
+                // Now rebuild according to goal state (bottom-up approach)
+                const goalStacks = this.identifyStacks(goalBlocks);
+                
+                for (const stack of goalStacks) {
+                    // Build each stack from bottom up
+                    for (let i = 1; i < stack.length; i++) {
+                        const blockToMove = stack[i];
+                        const targetBlock = stack[i - 1];
+                        
+                        steps.push({
+                            action: `Move ${blockToMove} from table to ${targetBlock}`,
+                            blocks: this.moveBlockFromTableToBlock(currentState, blockToMove, targetBlock)
+                        });
+                    }
+                }
+                
+                // Add a final state if we have steps
+                if (steps.length > 1) {
+                    steps.push({
+                        action: "Goal State Achieved",
+                        blocks: this.cloneBlockState(currentState)
+                    });
+                }
+                
+                return steps;
+            }
+            
+            getBlocksToDisassemble(currentState, goalState) {
+                const blocksToDisassemble = new Set();
+                
+                // Find blocks that are in incorrect positions
+                for (const [block, state] of Object.entries(currentState)) {
+                    // If block is on table in current but not in goal
+                    if (state.onTable && goalState[block] && !goalState[block].onTable) {
+                        blocksToDisassemble.add(block);
+                    }
+                    
+                    // If block is on another block
+                    if (!state.onTable) {
+                        const currentSupport = this.findSupportingBlock(currentState, block);
+                        const goalSupport = this.findSupportingBlock(goalState, block);
+                        
+                        // If supporting blocks differ, need to disassemble
+                        if (currentSupport !== goalSupport) {
+                            blocksToDisassemble.add(block);
+                        }
+                    }
+                }
+                
+                return Array.from(blocksToDisassemble);
+            }
+            
+            findBlocksAbove(state, block) {
+                // BFS to find all blocks above this one
+                const blocksAbove = [];
+                const queue = [...state[block].supports];
+                
+                while (queue.length > 0) {
+                    const current = queue.shift();
+                    blocksAbove.push(current);
+                    
+                    if (state[current] && state[current].supports) {
+                        queue.push(...state[current].supports);
+                    }
+                }
+                
+                // Return blocks in top-down order (for disassembly)
+                return blocksAbove.reverse();
+            }
+            
+            findSupportingBlock(state, block) {
+                // Find what block this is sitting on
+                for (const [b, s] of Object.entries(state)) {
+                    if (s.supports && s.supports.includes(block)) {
+                        return b;
+                    }
+                }
+                return "table";
+            }
+            
+            identifyStacks(goalState) {
+                // Identify stacks from bottom to top
+                const stacks = [];
+                const blocksOnTable = Object.keys(goalState).filter(b => goalState[b].onTable);
+                
+                for (const baseBlock of blocksOnTable) {
+                    const stack = [baseBlock];
+                    let currentBlock = baseBlock;
+                    
+                    // Build stack upward
+                    while (goalState[currentBlock] && goalState[currentBlock].supports.length > 0) {
+                        const nextBlock = goalState[currentBlock].supports[0]; // Assume one block per support for simplicity
+                        stack.push(nextBlock);
+                        currentBlock = nextBlock;
+                    }
+                    
+                    if (stack.length > 1) { // Only include stacks with multiple blocks
+                        stacks.push(stack);
+                    }
+                }
+                
+                return stacks;
+            }
+            
+            moveBlockToTable(state, block) {
+                // Find the supporting block
+                let supportingBlock = null;
+                for (const [b, s] of Object.entries(state)) {
+                    if (s.supports && s.supports.includes(block)) {
+                        supportingBlock = b;
+                        break;
+                    }
+                }
+                
+                if (supportingBlock) {
+                    // Remove block from supporting block's supports
+                    const supportIdx = state[supportingBlock].supports.indexOf(block);
+                    if (supportIdx !== -1) {
+                        state[supportingBlock].supports.splice(supportIdx, 1);
+                    }
+                    
+                    // If supporting block has no more supports, it's clear
+                    if (state[supportingBlock].supports.length === 0) {
+                        state[supportingBlock].clear = true;
+                    }
+                }
+                
+                // Update the moved block
+                state[block].onTable = true;
+                
+                return this.cloneBlockState(state);
+            }
+            
+            moveBlockFromTableToBlock(state, blockToMove, targetBlock) {
+                // Update the moved block
+                state[blockToMove].onTable = false;
+                
+                // Update the target block
+                state[targetBlock].clear = false;
+                state[targetBlock].supports.push(blockToMove);
+                
+                return this.cloneBlockState(state);
+            }
+            
+            cloneBlockState(state) {
+                return JSON.parse(JSON.stringify(state));
+            }
+
+            calculateBlockPositions(blocksState) {
+                const viz = document.getElementById('visualization');
+                const vizWidth = viz.clientWidth;
+                const vizHeight = viz.clientHeight;
+                
+                const positions = {};
+                
+                // Count blocks on table to position them evenly
+                const tableBlocks = Object.keys(blocksState).filter(b => blocksState[b].onTable);
+                const totalWidth = tableBlocks.length * this.blockWidth + (tableBlocks.length - 1) * this.spacing;
+                const startX = (vizWidth - totalWidth) / 2;
+                
+                // Position blocks on table
+                let xPos = startX;
+                for (const block of tableBlocks) {
+                    positions[block] = {
+                        x: xPos,
+                        y: 0, // Position directly on the table
+                        width: this.blockWidth,
+                        height: this.blockHeight
+                    };
+                    xPos += this.blockWidth + this.spacing;
+                    
+                    // Position blocks on top of this block
+                    this.positionBlocksAbove(block, positions, blocksState);
+                }
+                
+                return positions;
+            }
+            
+            positionBlocksAbove(block, positions, blocksState) {
+                // Recursively position blocks that are stacked
+                if (blocksState[block] && blocksState[block].supports) {
+                    for (const aboveBlock of blocksState[block].supports) {
+                        positions[aboveBlock] = {
+                            x: positions[block].x, // Same x position as the block below
+                            y: positions[block].y + this.blockHeight, // Stack on top
+                            width: this.blockWidth,
+                            height: this.blockHeight
+                        };
+                        
+                        // Recursively position blocks above this one
+                        this.positionBlocksAbove(aboveBlock, positions, blocksState);
+                    }
+                }
+            }
+
+            renderStep() {
+                if (!this.steps.length) return;
+                
+                const viz = document.getElementById('visualization');
+                viz.innerHTML = '';
+                
+                // Add table
+                const table = document.createElement('div');
+                table.className = 'table absolute bottom-0 w-full';
+                viz.appendChild(table);
+
+                const step = this.steps[this.currentStep];
+                const positions = this.calculateBlockPositions(step.blocks);
+                
+                // Add blocks
+                for (const [block, pos] of Object.entries(positions)) {
+                    const blockEl = document.createElement('div');
+                    blockEl.className = 'block absolute flex items-center justify-center text-white font-bold rounded';
+                    blockEl.style.backgroundColor = this.getBlockColor(block);
+                    blockEl.style.width = `${this.blockWidth}px`;
+                    blockEl.style.height = `${this.blockHeight}px`;
+                    
+                    // Position relative to the bottom of the container
+                    blockEl.style.left = `${pos.x}px`;
+                    blockEl.style.bottom = `${pos.y + this.tableHeight}px`;
+                    blockEl.textContent = block;
+                    viz.appendChild(blockEl);
+                }
+
+                // Update explanation
+                document.getElementById('explanation').innerHTML = `
+                    <p class="font-semibold">Step ${this.currentStep + 1} of ${this.steps.length}</p>
+                    <p class="mt-2">${step.action}</p>
+                    ${this.currentStep === this.steps.length - 1 ? 
+                        '<p class="mt-2 text-green-600 font-bold">Goal State Achieved!</p>' : ''}
+                `;
+            }
+
+            getBlockColor(block) {
+                const colors = {
+                    A: '#4299e1', // blue
+                    B: '#48bb78', // green
+                    C: '#ed8936', // orange
+                    D: '#9f7aea', // purple
+                    E: '#f56565', // red
+                    F: '#38b2ac', // teal
+                    G: '#ecc94b', // yellow
+                    H: '#667eea', // indigo
+                    I: '#fc8181', // light red
+                    J: '#4fd1c5'  // light teal
+                };
+                return colors[block] || '#718096'; // gray default
+            }
+
+            updateSummary() {
+                const summary = document.getElementById('stepsList');
+                summary.innerHTML = this.steps.map((step, index) => `
+                    <div class="p-2 ${index === this.currentStep ? 'bg-blue-100 rounded' : ''}">
+                        Step ${index + 1}: ${step.action}
+                    </div>
+                `).join('');
+
+                // Scroll to the current step
+                const activeStep = summary.children[this.currentStep];
+                if (activeStep) {
+                    activeStep.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+                }
+            }
+
+            nextStep() {
+                if (this.currentStep < this.steps.length - 1) {
+                    this.currentStep++;
+                    this.renderStep();
+                    this.updateSummary();
+                }
+            }
+
+            previousStep() {
+                if (this.currentStep > 0) {
+                    this.currentStep--;
+                    this.renderStep();
+                    this.updateSummary();
+                }
+            }
+
+            togglePlay() {
+                this.isPlaying = !this.isPlaying;
+                const button = document.getElementById('playPause');
+                
+                if (this.isPlaying) {
+                    button.innerHTML = '<i class="bi bi-pause-fill"></i> Pause';
+                    button.classList.replace('bg-green-500', 'bg-yellow-500');
+                    this.playInterval = setInterval(() => {
+                        if (this.currentStep >= this.steps.length - 1) {
+                            this.togglePlay();
+                            return;
+                        }
+                        this.nextStep();
+                    }, (6 - this.speed) * 500);
+                } else {
+                    button.innerHTML = '<i class="bi bi-play-fill"></i> Play';
+                    button.classList.replace('bg-yellow-500', 'bg-green-500');
+                    clearInterval(this.playInterval);
+                }
+            }
+
+            reset() {
+                if (this.steps.length > 0) {
+                    this.currentStep = 0;
+                    if (this.isPlaying) this.togglePlay();
+                    this.renderStep();
+                    this.updateSummary();
+                }
+            }
+        }
+
+        // Initialize the application
+        const blockWorld = new BlockWorld();
+        
+        // Add example states
+        document.getElementById('initialState').value = "A,B,C on table\nB on A\nC clear";
+        document.getElementById('goalState').value = "B,C on table\nA on B\nC clear";
+    </script>
+</body>
+</html>

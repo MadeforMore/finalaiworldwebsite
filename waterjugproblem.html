@@ -1,0 +1,298 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Problems Interactive Learning Platform</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css" rel="stylesheet">
+    <style>
+        /* Custom styling for animations and game elements */
+        .game-board {
+            display: grid;
+            gap: 2px;
+            background: #ccc;
+            padding: 2px;
+            margin: auto;
+        }
+       
+        
+        .jug {
+            position: relative;
+            border: 2px solid #333;
+            margin: 10px;
+            background: #fff;
+        }
+        .water {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background: #4299e1;
+            transition: height 0.5s;
+        }
+        
+        /* Loading animation */
+        .loading {
+            display: none;
+            width: 30px;
+            height: 30px;
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid #3498db;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+
+    </style>
+</head>
+
+<body class="bg-gray-100">
+    <div class="container mx-auto px-4 py-8">
+        <!-- Header -->
+        <header class="text-center mb-12">
+            <h1 class="text-4xl font-bold text-gray-800 mb-4">AI Classic Problems</h1>
+            <p class="text-gray-600">Interactive solutions to classic AI problems with visualization</p>
+        </header>
+
+        <!-- Game Selection -->
+        <div class="flex flex-wrap gap-4 justify-center mb-8">
+            <button id="waterJugBtn" class="px-6 py-3 bg-white-500 text- rounded-lg hover:bg-white-600 transition">Water Jug Problem</button>
+        </div>
+
+        <!-- Loading Indicator -->
+        <div id="loadingIndicator" class="loading mx-auto"></div>
+
+        <!-- Game Containers -->
+        <div id="waterJugGame" class="game-container hidden">
+            <div class="bg-white p-6 rounded-lg shadow-lg">
+                <h2 class="text-2xl font-bold mb-4">Water Jug Problem</h2>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div class="input-section">
+                        <div class="mb-4">
+                            <label class="block text-sm font-medium mb-2">Jug 1 Capacity</label>
+                            <input type="number" id="jug1Cap" class="w-full p-2 border rounded" min="1" value="4">
+                        </div>
+                        <div class="mb-4">
+                            <label class="block text-sm font-medium mb-2">Jug 2 Capacity</label>
+                            <input type="number" id="jug2Cap" class="w-full p-2 border rounded" min="1" value="3">
+                        </div>
+                        <div class="mb-4">
+                            <label class="block text-sm font-medium mb-2">Target Amount</label>
+                            <input type="number" id="targetAmount" class="w-full p-2 border rounded" min="1" value="2">
+                        </div>
+                        <button id="solveWaterJug" class="w-full bg-blue-500 text-white py-2 rounded hover:bg-blue-600">Solve</button>
+                    </div>
+                    <div id="jugVisualization" class="flex justify-center items-end">
+                        <div class="jug" style="width: 80px; height: 120px">
+                            <div class="water" style="height: 0%"></div>
+                        </div>
+                        <div class="jug" style="width: 80px; height: 120px">
+                            <div class="water" style="height: 0%"></div>
+                        </div>
+                    </div>
+                </div>
+                <div id="waterJugSteps" class="mt-4"></div>
+            </div>
+        </div>
+
+      
+
+
+    <script>
+        showGame('waterJugGame');
+        // Game selection functionality
+        document.getElementById('waterJugBtn').onclick = () => showGame('waterJugGame');
+        
+        
+        
+
+        function showGame(gameId) {
+            document.querySelectorAll('.game-container').forEach(container => {
+                container.classList.add('hidden');
+            });
+            document.getElementById(gameId).classList.remove('hidden');
+        }
+
+        // Loading indicator functions
+        function showLoading() {
+            document.getElementById('loadingIndicator').style.display = 'block';
+        }
+
+        function hideLoading() {
+            document.getElementById('loadingIndicator').style.display = 'none';
+        }
+
+        // MongoDB integration for saving game states
+        async function saveGameState(gameType, data) {
+            try {
+                showLoading();
+                const response = await fetch('https://r0c8kgwocscg8gsokogwwsw4.zetaverse.one/mongodb', {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': 'Bearer k9zXNm63jmfA0ymr4TEeN3I4GVg1',
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        appSlug: 'ai-games-123456',
+                        action: 'create',
+                        collection: 'gameStates',
+                        data: {
+                            gameType,
+                            timestamp: new Date(),
+                            ...data
+                        }
+                    })
+                });
+                const result = await response.json();
+                hideLoading();
+                return result;
+            } catch (error) {
+                console.error('Error saving game state:', error);
+                hideLoading();
+                throw error;
+            }
+        }
+
+        // Water Jug Problem Implementation
+        class WaterJugSolver {
+            constructor(jug1Cap, jug2Cap, target) {
+                this.jug1Cap = jug1Cap;
+                this.jug2Cap = jug2Cap;
+                this.target = target;
+            }
+
+            solve() {
+                const visited = new Set();
+                const queue = [[0, 0, []]];
+                
+                while (queue.length > 0) {
+                    const [jug1, jug2, path] = queue.shift();
+                    const state = `${jug1},${jug2}`;
+
+                    if (visited.has(state)) continue;
+                    visited.add(state);
+
+                    if (jug1 === this.target || jug2 === this.target) {
+                        return [...path, [jug1, jug2]];
+                    }
+
+                    // Generate all possible next states
+                    const nextStates = [
+                        [this.jug1Cap, jug2], // Fill jug1
+                        [jug1, this.jug2Cap], // Fill jug2
+                        [0, jug2], // Empty jug1
+                        [jug1, 0], // Empty jug2
+                        // Pour jug1 to jug2
+                        [Math.max(0, jug1 - (this.jug2Cap - jug2)), Math.min(this.jug2Cap, jug2 + jug1)],
+                        // Pour jug2 to jug1
+                        [Math.min(this.jug1Cap, jug1 + jug2), Math.max(0, jug2 - (this.jug1Cap - jug1))]
+                    ];
+
+                    for (const nextState of nextStates) {
+                        if (!visited.has(`${nextState[0]},${nextState[1]}`)) {
+                            queue.push([...nextState, [...path, [jug1, jug2]]]);
+                        }
+                    }
+                }
+                return null;
+            }
+        }
+
+
+
+        
+
+        // Event Listeners
+        document.getElementById('solveWaterJug').onclick = async () => {
+            const jug1Cap = parseInt(document.getElementById('jug1Cap').value);
+            const jug2Cap = parseInt(document.getElementById('jug2Cap').value);
+            const target = parseInt(document.getElementById('targetAmount').value);
+
+            const solver = new WaterJugSolver(jug1Cap, jug2Cap, target);
+            const solution = solver.solve();
+
+            if (solution) {
+                const steps = document.getElementById('waterJugSteps');
+                steps.innerHTML = '';
+                const jug1 = document.querySelectorAll('.jug')[0].querySelector('.water');
+                const jug2 = document.querySelectorAll('.jug')[1].querySelector('.water');
+
+                solution.forEach((state, index) => {
+                    setTimeout(() => {
+                        jug1.style.height = `${(state[0] / jug1Cap) * 100}%`;
+                        jug2.style.height = `${(state[1] / jug2Cap) * 100}%`;
+                        steps.innerHTML += `<p>Step ${index + 1}: Jug1 = ${state[0]}, Jug2 = ${state[1]}</p>`;
+                    }, index * 1000);
+                });
+
+                await saveGameState('waterJug', {
+                    jug1Cap,
+                    jug2Cap,
+                    target,
+                    steps: solution.length
+                });
+            }
+        };
+
+        document.getElementById('solveNQueen').onclick = async () => {
+            const size = parseInt(document.getElementById('boardSize').value);
+            const solver = new NQueenSolver(size);
+            const solution = solver.solve();
+
+            if (solution) {
+                const board = document.getElementById('chessboard');
+                board.style.gridTemplateColumns = `repeat(${size}, 1fr)`;
+                board.innerHTML = '';
+
+                solution.forEach((row, i) => {
+                    row.forEach((cell, j) => {
+                        const div = document.createElement('div');
+                        div.className = `board-cell ${cell ? 'queen-cell' : ''}`;
+                        div.innerHTML = cell ? '👑' : '';
+                        board.appendChild(div);
+                    });
+                });
+
+                await saveGameState('nQueen', {
+                    boardSize: size,
+                    solution
+                });
+            }
+        };
+
+        document.getElementById('solveMC').onclick = async () => {
+            const solver = new MCProblem();
+            const solution = solver.solve();
+
+            if (solution) {
+                const boat = document.querySelector('.boat');
+                const steps = document.getElementById('mcSteps');
+                steps.innerHTML = '';
+
+                solution.forEach((state, index) => {
+                    setTimeout(() => {
+                        document.getElementById('leftM').textContent = `${state.leftM}M`;
+                        document.getElementById('leftC').textContent = `${state.leftC}C`;
+                        document.getElementById('rightM').textContent = `${state.rightM}M`;
+                        document.getElementById('rightC').textContent = `${state.rightC}C`;
+                        boat.style.left = state.boat === 'left' ? '0%' : '80%';
+                        steps.innerHTML += `<p>Step ${index + 1}: Left(${state.leftM}M,${state.leftC}C) Right(${state.rightM}M,${state.rightC}C) Boat:${state.boat}</p>`;
+                    }, index * 2000);
+                });
+
+                await saveGameState('missionaryCannibals', {
+                    steps: solution.length
+                });
+            }
+        };
+
+        // Show Water Jug game by default
+        
+    </script>
+</body>
+</html>

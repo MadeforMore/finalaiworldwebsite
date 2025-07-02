@@ -1,0 +1,356 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Algorithms Learning Hub</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&family=Source+Code+Pro:wght@400;500&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
+    <style>
+        body {
+            font-family: 'Roboto', sans-serif;
+            background-color: #f0f9ff;
+        }
+        .code {
+            font-family: 'Source Code Pro', monospace;
+        }
+        .chatbot {
+            transition: all 0.3s ease;
+        }
+        .algorithm-card {
+            transition: transform 0.3s ease;
+        }
+        .algorithm-card:hover {
+            transform: translateY(-5px);
+        }
+        .content-section {
+            display: none;
+        }
+        .content-section.active {
+            display: block;
+        }
+    </style>
+</head>
+<body>
+    <!-- Header -->
+    <header class="bg-gradient-to-r from-blue-600 to-blue-800 text-white p-6">
+        <div class="container mx-auto">
+            <h1 class="text-3xl md:text-4xl font-bold">AI Algorithms Learning Hub</h1>
+            <p class="mt-2">Master the fundamentals of AI algorithms through interactive learning</p>
+        </div>
+    </header>
+
+    <!-- Main Content -->
+    <main class="container mx-auto p-4 md:p-6">
+        <!-- Algorithm Cards -->
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            <!-- A* Algorithm -->
+            <div class="algorithm-card bg-white rounded-lg shadow-lg p-6">
+                <h2 class="text-2xl font-bold text-blue-800">A* Algorithm</h2>
+                <p class="mt-2 text-gray-600">Pathfinding algorithm that combines Dijkstra's and Best-First Search</p>
+                <button onclick="showContent('astar')" class="mt-4 bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700">Learn More</button>
+            </div>
+
+            <!-- BFS/DFS -->
+            <div class="algorithm-card bg-white rounded-lg shadow-lg p-6">
+                <h2 class="text-2xl font-bold text-blue-800">BFS / DFS</h2>
+                <p class="mt-2 text-gray-600">Graph traversal algorithms for searching tree or graph data structures</p>
+                <button onclick="showContent('bfsdfs')" class="mt-4 bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700">Learn More</button>
+            </div>
+
+            <!-- Minimax -->
+            <div class="algorithm-card bg-white rounded-lg shadow-lg p-6">
+                <h2 class="text-2xl font-bold text-blue-800">Minimax Algorithm</h2>
+                <p class="mt-2 text-gray-600">Decision-making algorithm for two-player games</p>
+                <button onclick="showContent('minimax')" class="mt-4 bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700">Learn More</button>
+            </div>
+
+            <!-- Alpha-Beta Pruning -->
+            <div class="algorithm-card bg-white rounded-lg shadow-lg p-6">
+                <h2 class="text-2xl font-bold text-blue-800">Alpha-Beta Pruning</h2>
+                <p class="mt-2 text-gray-600">Optimization of the Minimax algorithm</p>
+                <button onclick="showContent('alphabeta')" class="mt-4 bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700">Learn More</button>
+            </div>
+
+            <!-- Genetic Algorithm -->
+            <div class="algorithm-card bg-white rounded-lg shadow-lg p-6">
+                <h2 class="text-2xl font-bold text-blue-800">Genetic Algorithm</h2>
+                <p class="mt-2 text-gray-600">Nature-inspired optimization algorithm</p>
+                <button onclick="showContent('genetic')" class="mt-4 bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700">Learn More</button>
+            </div>
+
+            <!-- Hill Climbing -->
+            <div class="algorithm-card bg-white rounded-lg shadow-lg p-6">
+                <h2 class="text-2xl font-bold text-blue-800">Hill Climbing</h2>
+                <p class="mt-2 text-gray-600">Local search optimization algorithm</p>
+                <button onclick="showContent('hillclimbing')" class="mt-4 bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700">Learn More</button>
+            </div>
+        </div>
+
+        <!-- Content Sections -->
+        <div id="algorithm-content" class="mt-8 bg-white rounded-lg shadow-lg p-6">
+            <div id="astar" class="content-section">
+                <h2 class="text-3xl font-bold text-blue-800">A* Algorithm</h2>
+                <div class="mt-4 space-y-4">
+                    <p>A* (pronounced "A-star") is a graph traversal and pathfinding algorithm that is often used in computer science due to its completeness, optimality, and reasonable time performance. The algorithm efficiently plots a walkable path between multiple nodes, or points, on the graph.</p>
+                    <h3 class="text-xl font-semibold">Key Components:</h3>
+                    <ul class="list-disc pl-6">
+                        <li>g(n) - the cost of the path from the start node to n</li>
+                        <li>h(n) - the heuristic estimate of the cost from n to the goal</li>
+                        <li>f(n) = g(n) + h(n) - the total estimated cost of the path through n</li>
+                    </ul>
+                    <div class="code bg-gray-100 p-4 rounded">
+                        <pre>
+function aStar(start, goal):
+    openSet = {start}
+    cameFrom = {}
+    gScore = {start: 0}
+    fScore = {start: heuristic(start, goal)}
+
+    while openSet is not empty:
+        current = node in openSet with lowest fScore
+        if current = goal:
+            return reconstruct_path(cameFrom, current)
+        </pre>
+                    </div>
+                </div>
+            </div>
+            <!-- Similar content sections for other algorithms -->
+            <!-- Add content sections for other algorithms following the same pattern -->
+        </div>
+
+        <!-- BFS/DFS Content -->
+        <div id="bfsdfs" class="content-section">
+            <h2 class="text-3xl font-bold text-blue-800">BFS / DFS Algorithms</h2>
+            <div class="mt-4 space-y-4">
+                <p>BFS (Breadth-First Search) explores all neighbors before going deeper. DFS (Depth-First Search) explores as deep as possible before backtracking.</p>
+                <h3 class="text-xl font-semibold">Applications:</h3>
+                <ul class="list-disc pl-6">
+                    <li>Finding Shortest Path (BFS)</li>
+                    <li>Maze Solving</li>
+                    <li>Cycle Detection in Graphs</li>
+                </ul>
+                <div class="code bg-gray-100 p-4 rounded">
+                <pre>
+// BFS
+function BFS(graph, start):
+    queue = [start]
+    visited = {start}
+
+    while queue is not empty:
+        node = queue.pop(0)
+        for neighbor in graph[node]:
+            if neighbor not in visited:
+                visited.add(neighbor)
+                queue.append(neighbor)
+
+// DFS
+function DFS(graph, node, visited):
+    visited.add(node)
+    for neighbor in graph[node]:
+        if neighbor not in visited:
+            DFS(graph, neighbor, visited)
+            </pre>
+        </div>
+    </div>
+</div>
+        
+                    <!-- Minimax Content -->
+                    <div id="minimax" class="content-section">
+                        <h2 class="text-3xl font-bold text-blue-800">Minimax Algorithm</h2>
+                        <div class="mt-4 space-y-4">
+                            <p>Minimax is a decision-making algorithm used in turn-based games to minimize the possible loss while maximizing potential gain.</p>
+                            <h3 class="text-xl font-semibold">Applications:</h3>
+                            <ul class="list-disc pl-6">
+                                <li>Chess, Tic-Tac-Toe, Checkers</li>
+                                <li>AI Game Bots</li>
+                            </ul>
+                            <div class="code bg-gray-100 p-4 rounded">
+                                <pre>
+        function minimax(node, depth, maximizingPlayer):
+            if depth == 0 or node is terminal:
+                return evaluate(node)
+        
+            if maximizingPlayer:
+                maxEval = -infinity
+                for child in node.children:
+                    eval = minimax(child, depth - 1, false)
+                    maxEval = max(maxEval, eval)
+                return maxEval
+            else:
+                minEval = +infinity
+                for child in node.children:
+                    eval = minimax(child, depth - 1, true)
+                    minEval = min(minEval, eval)
+                return minEval
+                                </pre>
+                            </div>
+                        </div>
+                    </div>
+        
+                </div>
+
+                <div id="alphabeta" class="content-section">
+                    <h2 class="text-3xl font-bold text-blue-800">Alpha-Beta Pruning</h2>
+                    <p class="mt-4">Optimization for Minimax to avoid unnecessary moves.</p>
+                    <h3 class="text-xl font-semibold">Parameters:</h3>
+                    <ul class="list-disc pl-6">
+                        <li>Alpha - Best already explored option along path to maximizer</li>
+                        <li>Beta - Best already explored option along path to minimizer</li>
+                    </ul>
+                    <div class="code bg-gray-100 p-4 rounded mt-4">
+                        <pre>
+    function alphabeta(node, depth, alpha, beta, isMax):
+        if depth == 0 or node is terminal:
+            return heuristic(node)
+        if isMax:
+            value = -inf
+            for child in node:
+                value = max(value, alphabeta(child, depth-1, alpha, beta, false))
+                alpha = max(alpha, value)
+                if alpha >= beta:
+                    break
+        else:
+            value = inf
+            for child in node:
+                value = min(value, alphabeta(child, depth-1, alpha, beta, true))
+                beta = min(beta, value)
+                if beta <= alpha:
+                    break
+        return value
+                        </pre>
+                    </div>
+                </div>
+    
+                <div id="genetic" class="content-section">
+                    <h2 class="text-3xl font-bold text-blue-800">Genetic Algorithm</h2>
+                    <p class="mt-4">Optimization algorithm inspired by genetics.</p>
+                    <h3 class="text-xl font-semibold">Process:</h3>
+                    <ul class="list-disc pl-6">
+                        <li>Selection</li>
+                        <li>Crossover</li>
+                        <li>Mutation</li>
+                    </ul>
+                    <div class="code bg-gray-100 p-4 rounded mt-4">
+                        <pre>
+    initialize population
+    evaluate fitness
+    while termination condition not met:
+        select parents
+        crossover parents
+        mutate offspring
+        evaluate new population
+                        </pre>
+                    </div>
+                </div>
+    
+                <div id="hillclimbing" class="content-section">
+                    <h2 class="text-3xl font-bold text-blue-800">Hill Climbing Algorithm</h2>
+                    <p class="mt-4">Iterative improvement algorithm for local search.</p>
+                    <h3 class="text-xl font-semibold">Steps:</h3>
+                    <ul class="list-disc pl-6">
+                        <li>Start with an initial solution</li>
+                        <li>Loop until no better solution found</li>
+                        <li>Move to neighbor if better</li>
+                    </ul>
+                    <div class="code bg-gray-100 p-4 rounded mt-4">
+                        <pre>
+    function hillClimbing(problem):
+        current = initial solution
+        loop:
+            neighbor = best neighbor of current
+            if neighbor is not better:
+                return current
+            current = neighbor
+                        </pre>
+                    </div>
+                </div>
+            </div>
+
+        <!-- Chatbot -->
+        <div class="fixed bottom-4 right-4 chatbot">
+            <div id="chat-container" class="hidden bg-white rounded-lg shadow-lg w-80">
+                <div class="bg-blue-600 text-white p-4 rounded-t-lg">
+                    <h3 class="font-bold">AI Assistant</h3>
+                </div>
+                <div id="chat-messages" class="h-80 overflow-y-auto p-4">
+                    <div class="mb-4">
+                        <p class="bg-blue-100 p-2 rounded">Hello! How can I help you learn about AI algorithms today?</p>
+                    </div>
+                </div>
+                <div class="p-4 border-t">
+                    <div class="flex">
+                        <input type="text" id="user-input" class="flex-1 border rounded-l px-4 py-2" placeholder="Type your question...">
+                        <button onclick="sendMessage()" class="bg-blue-600 text-white px-4 py-2 rounded-r hover:bg-blue-700">
+                            <i class="bi bi-send"></i>
+                        </button>
+                    </div>
+                </div>
+            </div>
+            <button onclick="toggleChat()" class="bg-blue-600 text-white p-4 rounded-full shadow-lg hover:bg-blue-700 float-right">
+                <i class="bi bi-chat-dots-fill"></i>
+            </button>
+        </div>
+    </main>
+
+    <script>
+        // Show/Hide Content Sections
+        function showContent(algorithmId) {
+            document.querySelectorAll('.content-section').forEach(section => {
+                section.style.display = 'none';
+            });
+            document.getElementById(algorithmId).style.display = 'block';
+        }
+
+        // Chatbot Toggle
+        function toggleChat() {
+            const chatContainer = document.getElementById('chat-container');
+            chatContainer.classList.toggle('hidden');
+        }
+
+        // Simple Chatbot Logic
+        function sendMessage() {
+            const input = document.getElementById('user-input');
+            const message = input.value.trim();
+            if (message) {
+                const chatMessages = document.getElementById('chat-messages');
+                
+                // Add user message
+                chatMessages.innerHTML += `
+                    <div class="mb-4 text-right">
+                        <p class="bg-blue-600 text-white p-2 rounded inline-block">${message}</p>
+                    </div>
+                `;
+
+                // Simple response logic
+                let response = "I'm sorry, I need more context to help you with that.";
+                if (message.toLowerCase().includes('a*')) {
+                    response = "A* is a pathfinding algorithm that uses heuristics to find the optimal path. Would you like to learn more about its implementation?";
+                } else if (message.toLowerCase().includes('bfs') || message.toLowerCase().includes('dfs')) {
+                    response = "BFS (Breadth-First Search) and DFS (Depth-First Search) are fundamental graph traversal algorithms. Which one would you like to learn about?";
+                }
+
+                // Add bot response
+                setTimeout(() => {
+                    chatMessages.innerHTML += `
+                        <div class="mb-4">
+                            <p class="bg-blue-100 p-2 rounded">${response}</p>
+                        </div>
+                    `;
+                    chatMessages.scrollTop = chatMessages.scrollHeight;
+                }, 500);
+
+                input.value = '';
+            }
+        }
+
+        // Handle Enter key in chat
+        document.getElementById('user-input').addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                sendMessage();
+            }
+        });
+    </script>
+</body>
+</html>

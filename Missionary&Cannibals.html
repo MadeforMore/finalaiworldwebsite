@@ -1,0 +1,282 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Problems Interactive Learning Platform</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css" rel="stylesheet">
+    <style>
+        /* Custom styling for animations and game elements */
+        .game-board {
+            display: grid;
+            gap: 2px;
+            background: #ccc;
+            padding: 2px;
+            margin: auto;
+        }
+        .board-cell {
+            aspect-ratio: 1;
+            background: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.5rem;
+        }
+        .queen-cell {
+            background-color: #ffd700;
+        }
+        .jug {
+            position: relative;
+            border: 2px solid #333;
+            margin: 10px;
+            background: #fff;
+        }
+        .water {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background: #4299e1;
+            transition: height 0.5s;
+        }
+        .river {
+            background: linear-gradient(90deg, #4299e1 0%, #63b3ed 100%);
+            position: relative;
+            height: 100px;
+            margin: 20px 0;
+        }
+        .boat {
+            position: absolute;
+            bottom: 20px;
+            width: 100px;
+            height: 40px;
+            background: #8b4513;
+            border-radius: 10px;
+            transition: left 1s;
+        }
+        /* Loading animation */
+        .loading {
+            display: none;
+            width: 30px;
+            height: 30px;
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid #3498db;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+
+    </style>
+</head>
+
+<body class="bg-gray-100">
+    <div class="container mx-auto px-4 py-8">
+        <!-- Header -->
+        <header class="text-center mb-12">
+            <h1 class="text-4xl font-bold text-gray-800 mb-4">AI Classic Problems</h1>
+            <p class="text-gray-600">Interactive solutions to classic AI problems with visualization</p>
+        </header>
+
+        <!-- Game Selection -->
+        <div class="flex flex-wrap gap-4 justify-center mb-8">
+            <button id="missionaryBtn" class="px-6 py-3 bg-white-500 text-blue rounded-lg hover:bg-white-600 transition">Missionary & Cannibals</button>
+        </div>
+       
+
+        <!-- Loading Indicator -->
+        <div id="loadingIndicator" class="loading mx-auto"></div>
+
+
+        <!-- Missionary and Cannibals -->
+        <div id="missionaryGame" class="game-container hidden">
+            <div class="bg-white p-6 rounded-lg shadow-lg">
+                <h2 class="text-2xl font-bold mb-4">Missionary & Cannibals</h2>
+                <div class="river-container">
+                    <div class="river">
+                        <div class="boat" style="left: 0%"></div>
+                    </div>
+                    <div class="flex justify-between">
+                        <div id="leftBank" class="bank">
+                            <span id="leftM">3M</span>
+                            <span id="leftC">3C</span>
+                        </div>
+                        <div id="rightBank" class="bank">
+                            <span id="rightM">0M</span>
+                            <span id="rightC">0C</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="mt-4">
+                    <button id="solveMC" class="w-full bg-green-500 text-white py-2 rounded hover:bg-green-600">Start Solution</button>
+                </div>
+                <div id="mcSteps" class="mt-4"></div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        showGame('missionaryGame');
+        // Game selection functionality
+        
+        document.getElementById('missionaryBtn').onclick = () => showGame('missionaryGame');
+        
+
+        function showGame(gameId) {
+            document.querySelectorAll('.game-container').forEach(container => {
+                container.classList.add('hidden');
+            });
+            document.getElementById(gameId).classList.remove('hidden');
+        }
+
+        // Loading indicator functions
+        function showLoading() {
+            document.getElementById('loadingIndicator').style.display = 'block';
+        }
+
+        function hideLoading() {
+            document.getElementById('loadingIndicator').style.display = 'none';
+        }
+
+        // MongoDB integration for saving game states
+        async function saveGameState(gameType, data) {
+            try {
+                showLoading();
+                const response = await fetch('https://r0c8kgwocscg8gsokogwwsw4.zetaverse.one/mongodb', {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': 'Bearer k9zXNm63jmfA0ymr4TEeN3I4GVg1',
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        appSlug: 'ai-games-123456',
+                        action: 'create',
+                        collection: 'gameStates',
+                        data: {
+                            gameType,
+                            timestamp: new Date(),
+                            ...data
+                        }
+                    })
+                });
+                const result = await response.json();
+                hideLoading();
+                return result;
+            } catch (error) {
+                console.error('Error saving game state:', error);
+                hideLoading();
+                throw error;
+            }
+        }
+
+    
+        // Missionary and Cannibals Problem Implementation
+        class MCProblem {
+            constructor() {
+                this.initialState = {
+                    leftM: 3,
+                    leftC: 3,
+                    rightM: 0,
+                    rightC: 0,
+                    boat: 'left'
+                };
+            }
+
+            isValid(state) {
+                if (state.leftM < 0 || state.leftC < 0 || state.rightM < 0 || state.rightC < 0) return false;
+                if ((state.leftM < state.leftC && state.leftM > 0) || 
+                    (state.rightM < state.rightC && state.rightM > 0)) return false;
+                return true;
+            }
+
+            solve() {
+                const visited = new Set();
+                const queue = [[this.initialState, []]];
+                
+                while (queue.length > 0) {
+                    const [state, path] = queue.shift();
+                    const stateString = JSON.stringify(state);
+
+                    if (visited.has(stateString)) continue;
+                    visited.add(stateString);
+
+                    if (state.rightM === 3 && state.rightC === 3) {
+                        return [...path, state];
+                    }
+
+                    const moves = this.getValidMoves(state);
+                    for (const move of moves) {
+                        queue.push([move, [...path, state]]);
+                    }
+                }
+                return null;
+            }
+
+            getValidMoves(state) {
+                const moves = [];
+                const possibleMoves = [[1,0], [2,0], [0,1], [0,2], [1,1]];
+
+                for (const [m, c] of possibleMoves) {
+                    const newState = {...state};
+                    
+                    if (state.boat === 'left') {
+                        newState.leftM -= m;
+                        newState.leftC -= c;
+                        newState.rightM += m;
+                        newState.rightC += c;
+                        newState.boat = 'right';
+                    } else {
+                        newState.leftM += m;
+                        newState.leftC += c;
+                        newState.rightM -= m;
+                        newState.rightC -= c;
+                        newState.boat = 'left';
+                    }
+
+                    if (this.isValid(newState)) {
+                        moves.push(newState);
+                    }
+                }
+                return moves;
+            }
+        }
+
+       
+
+    
+
+        document.getElementById('solveMC').onclick = async () => {
+            const solver = new MCProblem();
+            const solution = solver.solve();
+
+            if (solution) {
+                const boat = document.querySelector('.boat');
+                const steps = document.getElementById('mcSteps');
+                steps.innerHTML = '';
+
+                solution.forEach((state, index) => {
+                    setTimeout(() => {
+                        document.getElementById('leftM').textContent = `${state.leftM}M`;
+                        document.getElementById('leftC').textContent = `${state.leftC}C`;
+                        document.getElementById('rightM').textContent = `${state.rightM}M`;
+                        document.getElementById('rightC').textContent = `${state.rightC}C`;
+                        boat.style.left = state.boat === 'left' ? '0%' : '80%';
+                        steps.innerHTML += `<p>Step ${index + 1}: Left(${state.leftM}M,${state.leftC}C) Right(${state.rightM}M,${state.rightC}C) Boat:${state.boat}</p>`;
+                    }, index * 2000);
+                });
+
+                await saveGameState('missionaryCannibals', {
+                    steps: solution.length
+                });
+            }
+        };
+
+        // Show Water Jug game by default
+        
+    </script>
+</body>
+</html>
